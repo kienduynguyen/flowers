@@ -23,7 +23,7 @@ def build_dataset_flowers(is_train, args):
 
     root = os.path.join(args.data_path)
     dataset = torchvision.datasets.Flowers102(
-        root, "train" if is_train else "val", transform=transform, download=True
+        root, "train" if is_train else "test", transform=transform
     )
 
     print(dataset)
