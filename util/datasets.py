@@ -11,16 +11,74 @@
 import os
 import PIL
 
+import torchvision
 from torchvision import datasets, transforms
 
 from timm.data import create_transform
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
+def build_dataset_flowers(is_train, args):
+    transform = build_transform_flowers(is_train, args)
+
+    root = os.path.join(args.data_path, "train" if is_train else "val")
+    dataset = torchvision.datasets.Flowers102(
+        root, "train" if is_train else "val", transform=transform, download=True
+    )
+
+    print(dataset)
+
+    return dataset
+
+
+def build_transform_flowers(is_train, args):
+    mean = IMAGENET_DEFAULT_MEAN
+    std = IMAGENET_DEFAULT_STD
+
+    t = []
+    # train transform
+    if is_train:
+        t.append(
+            transforms.RandomChoice(
+                [
+                    transforms.Compose(
+                        [
+                            transforms.RandomResizedCrop(
+                                args.input_size, interpolation=PIL.Image.BICUBIC
+                            ),
+                            transforms.RandomHorizontalFlip(),
+                        ]
+                    ),
+                    transforms.CenterCrop(args.input_size),
+                ]
+            )
+        )
+    else:
+        # eval transform
+        if args.input_size <= 224:
+            crop_pct = 224 / 256
+        else:
+            crop_pct = 1.0
+        size = int(args.input_size / crop_pct)
+        t.append(
+            transforms.Resize(
+                size, interpolation=PIL.Image.BICUBIC
+            ),  # to maintain same ratio w.r.t. 224 images
+        )
+        t.append(transforms.CenterCrop(args.input_size))
+
+    t.append(transforms.ToTensor())
+    t.append(transforms.Normalize(mean, std))
+
+    t = transforms.Compose(t)
+
+    return t
+
+
 def build_dataset(is_train, args):
     transform = build_transform(is_train, args)
 
-    root = os.path.join(args.data_path, 'train' if is_train else 'val')
+    root = os.path.join(args.data_path, "train" if is_train else "val")
     dataset = datasets.ImageFolder(root, transform=transform)
 
     print(dataset)
@@ -39,7 +97,7 @@ def build_transform(is_train, args):
             is_training=True,
             color_jitter=args.color_jitter,
             auto_augment=args.aa,
-            interpolation='bicubic',
+            interpolation="bicubic",
             re_prob=args.reprob,
             re_mode=args.remode,
             re_count=args.recount,
@@ -56,7 +114,9 @@ def build_transform(is_train, args):
         crop_pct = 1.0
     size = int(args.input_size / crop_pct)
     t.append(
-        transforms.Resize(size, interpolation=PIL.Image.BICUBIC),  # to maintain same ratio w.r.t. 224 images
+        transforms.Resize(
+            size, interpolation=PIL.Image.BICUBIC
+        ),  # to maintain same ratio w.r.t. 224 images
     )
     t.append(transforms.CenterCrop(args.input_size))
 
