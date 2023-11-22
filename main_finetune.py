@@ -414,6 +414,9 @@ def main(args):
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
     if args.lr is None:  # only base_lr is specified
+        assert (
+            args.dataset == "imagenet"
+        ), "You should set lr for Flower dataset, not blr."
         args.lr = args.blr * eff_batch_size / 256
 
     print("base lr: %.2e" % (args.lr * 256 / eff_batch_size))
