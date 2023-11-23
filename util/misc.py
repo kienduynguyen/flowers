@@ -331,18 +331,36 @@ def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler, nu
 
 def load_model(args, model_without_ddp, optimizer, loss_scaler):
     if args.resume:
+        load_optimizer = True
         if args.resume.startswith('https'):
             checkpoint = torch.hub.load_state_dict_from_url(
                 args.resume, map_location='cpu', check_hash=True)
+        elif args.resume == "automatic":
+            last_ckpt = None
+            for e in range(args.epochs):
+                ckpt_path = os.path.join(args.output_dir, f"checkpoint-{e}.pth")
+                if os.path.exists(ckpt_path):
+                    last_ckpt = ckpt_path
+            if last_ckpt is None:
+                return
+            print(f"Found last checkpoint {last_ckpt}")
+            checkpoint = torch.load(last_ckpt, map_location="cpu")
         else:
+            load_optimizer = False
             checkpoint = torch.load(args.resume, map_location='cpu')
-        model_without_ddp.load_state_dict(checkpoint['model'])
+        model_incompatible_keys = model_without_ddp.load_state_dict(checkpoint["model"])
+        print("Loaded model:", model_incompatible_keys)
         print("Resume checkpoint %s" % args.resume)
-        if 'optimizer' in checkpoint and 'epoch' in checkpoint and not (hasattr(args, 'eval') and args.eval):
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            args.start_epoch = checkpoint['epoch'] + 1
-            if 'scaler' in checkpoint:
-                loss_scaler.load_state_dict(checkpoint['scaler'])
+        if (
+            load_optimizer
+            and "optimizer" in checkpoint
+            and "epoch" in checkpoint
+            and not (hasattr(args, "eval") and args.eval)
+        ):
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            args.start_epoch = checkpoint["epoch"] + 1
+            if "scaler" in checkpoint:
+                loss_scaler.load_state_dict(checkpoint["scaler"])
             print("With optim & sched!")
 
 
