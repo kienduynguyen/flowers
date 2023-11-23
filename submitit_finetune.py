@@ -26,6 +26,7 @@ def parse_args():
 
     parser.add_argument("--partition", default="learnfair", type=str, help="Partition where to submit")
     parser.add_argument("--use_volta32", action='store_true', help="Request 32G V100 GPUs")
+    parser.add_argument("--exclude", default="", type=str, help="Exclude nodes")
     parser.add_argument('--comment', default="", type=str, help="Comment to pass to scheduler")
     return parser.parse_args()
 
@@ -99,6 +100,8 @@ def main():
     kwargs = {}
     if args.use_volta32:
         kwargs['slurm_constraint'] = 'volta32gb'
+    if args.exclude:
+        kwargs["slurm_exclude"] = args.exclude
     if args.comment:
         kwargs['slurm_comment'] = args.comment
 
