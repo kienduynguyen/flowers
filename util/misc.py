@@ -12,6 +12,7 @@
 import builtins
 import datetime
 import os
+import glob
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -292,7 +293,7 @@ def get_grad_norm_(parameters, norm_type: float = 2.0) -> torch.Tensor:
     return total_norm
 
 
-def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler):
+def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler, num_checkpoint=2):
     output_dir = Path(args.output_dir)
     epoch_name = str(epoch)
     if loss_scaler is not None:
@@ -310,6 +311,22 @@ def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler):
     else:
         client_state = {'epoch': epoch}
         model.save_checkpoint(save_dir=args.output_dir, tag="checkpoint-%s" % epoch_name, client_state=client_state)
+
+    if is_main_process():
+        ckpt_file_paths = sorted(
+            glob.glob(os.path.join(args.output_dir, "checkpoint-*")),
+            key=lambda x: int(x.split("-")[-1].split(".")[0]),
+            reverse=True,
+        )
+        while len(ckpt_file_paths) > num_checkpoint:
+            file_path = ckpt_file_paths.pop()
+            os.remove(file_path)
+
+        if epoch == args.epochs - 1:
+            # touch a flag file
+            flag_path = output_dir / "trained.flag"
+            flag_path.touch()
+
 
 
 def load_model(args, model_without_ddp, optimizer, loss_scaler):
